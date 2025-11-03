@@ -22,7 +22,7 @@ services:
     command: sh -c "npm install && npm run dev"
     environment:
       - NODE_ENV=development
-      - NEXT_PUBLIC_API_URL=http://localhost:8201/api
+      - NEXT_PUBLIC_API_URL=http://localhost:8201
       - WATCHPACK_POLLING=true
     restart: unless-stopped
     networks:
