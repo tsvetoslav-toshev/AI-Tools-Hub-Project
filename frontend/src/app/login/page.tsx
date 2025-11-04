@@ -63,28 +63,30 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4">
-      <div className="max-w-md w-full space-y-8 bg-white dark:bg-gray-800 p-8 rounded-xl shadow-2xl">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
-            Вход в системата
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
-            Моля, въведете вашите данни
+    <div className="min-h-screen flex items-center justify-center bg-white dark:bg-[#1A1A1A] px-4">
+      <div className="max-w-md w-full py-16">
+        {/* Header */}
+        <div className="mb-16 text-center">
+          <h1 className="text-5xl font-light tracking-tight text-[#1A1A1A] dark:text-white mb-4">
+            Sign In
+          </h1>
+          <p className="text-sm text-[#A3A3A3] tracking-wider font-light">
+            Enter your credentials
           </p>
         </div>
 
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+        {/* Form */}
+        <form className="space-y-8" onSubmit={handleSubmit}>
           {error && (
-            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-300 px-4 py-3 rounded-lg text-sm">
+            <div className="border border-[#A3A3A3] bg-[#F4F4F4] dark:bg-[#2A2A2A] dark:border-[#A3A3A3] text-[#1A1A1A] dark:text-white px-6 py-4 text-sm font-light">
               {error}
             </div>
           )}
 
-          <div className="space-y-4">
+          <div className="space-y-8">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Email адрес
+              <label htmlFor="email" className="block text-xs uppercase tracking-widest text-[#A3A3A3] mb-3 font-light">
+                Email
               </label>
               <input
                 id="email"
@@ -94,14 +96,14 @@ export default function LoginPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="appearance-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 sm:text-sm"
-                placeholder="ivan@admin.local"
+                className="w-full px-0 py-3 border-0 border-b border-[#A3A3A3] bg-transparent text-[#1A1A1A] dark:text-white placeholder-[#A3A3A3] focus:outline-none focus:border-[#1A1A1A] dark:focus:border-white transition-colors font-light"
+                placeholder="your@email.com"
               />
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Парола
+              <label htmlFor="password" className="block text-xs uppercase tracking-widest text-[#A3A3A3] mb-3 font-light">
+                Password
               </label>
               <input
                 id="password"
@@ -111,31 +113,30 @@ export default function LoginPage() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="appearance-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 sm:text-sm"
+                className="w-full px-0 py-3 border-0 border-b border-[#A3A3A3] bg-transparent text-[#1A1A1A] dark:text-white placeholder-[#A3A3A3] focus:outline-none focus:border-[#1A1A1A] dark:focus:border-white transition-colors font-light"
                 placeholder="••••••••"
               />
             </div>
           </div>
 
-          <div>
+          <div className="pt-8">
             <button
               type="submit"
               disabled={loading}
-              className="group relative w-full flex justify-center py-2.5 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="w-full py-4 border border-[#1A1A1A] dark:border-white text-[#1A1A1A] dark:text-white hover:bg-[#F4F4F4] dark:hover:bg-[#2A2A2A] focus:outline-none disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-300 text-xs tracking-widest uppercase font-light"
             >
-              {loading ? 'Влизане...' : 'Вход'}
+              {loading ? 'Signing In...' : 'Sign In'}
             </button>
           </div>
         </form>
 
-        <div className="mt-6 border-t border-gray-200 dark:border-gray-700 pt-6">
-          <div className="text-sm text-gray-600 dark:text-gray-400">
-            <p className="font-semibold mb-2">Тестови акаунти:</p>
-            <div className="space-y-1 text-xs">
-              <p>👤 <strong>Owner:</strong> ivan@admin.local / password</p>
-              <p>💻 <strong>Frontend:</strong> elena@frontend.local / password</p>
-              <p>⚙️ <strong>Backend:</strong> petar@backend.local / password</p>
-            </div>
+        {/* Test Accounts */}
+        <div className="mt-16 pt-8 border-t border-[#F4F4F4] dark:border-[#2A2A2A]">
+          <p className="text-xs uppercase tracking-widest text-[#A3A3A3] mb-6 font-light">Test Accounts</p>
+          <div className="space-y-3 text-xs text-[#A3A3A3] font-light leading-relaxed">
+            <p><span className="text-[#1A1A1A] dark:text-white">Owner:</span> ivan@admin.local / password</p>
+            <p><span className="text-[#1A1A1A] dark:text-white">Frontend:</span> elena@frontend.local / password</p>
+            <p><span className="text-[#1A1A1A] dark:text-white">Backend:</span> petar@backend.local / password</p>
           </div>
         </div>
       </div>
