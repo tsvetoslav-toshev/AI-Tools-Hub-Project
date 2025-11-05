@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Tool;
 use App\Http\Requests\StoreToolRequest;
 use App\Http\Requests\UpdateToolRequest;
+use App\Http\Resources\ToolResource;
 use Illuminate\Http\Request;
 
 class ToolController extends Controller
@@ -74,7 +75,7 @@ class ToolController extends Controller
     {
         $validated = $request->validated();
         
-        // Create tool
+        // Create tool (auto-approved for company employees)
         $tool = auth()->user()->tools()->create([
             'name' => $validated['name'],
             'link' => $validated['link'],
@@ -82,7 +83,7 @@ class ToolController extends Controller
             'description' => $validated['description'],
             'how_to_use' => $validated['how_to_use'] ?? null,
             'real_examples' => $validated['real_examples'] ?? null,
-            'images' => $validated['images'] ?? [],
+            'is_approved' => true,
         ]);
 
         // Attach categories
@@ -102,7 +103,9 @@ class ToolController extends Controller
             }
         }
 
-        return response()->json($tool->load(['categories', 'tags', 'recommendedForUsers']), 201);
+        $tool->load(['categories', 'tags', 'recommendedForUsers', 'user']);
+        
+        return (new ToolResource($tool))->response()->setStatusCode(201);
     }
 
     /**
@@ -116,7 +119,7 @@ class ToolController extends Controller
         // Increment views count
         $tool->increment('views_count');
 
-        return response()->json($tool);
+        return new ToolResource($tool);
     }
 
     /**
@@ -141,7 +144,6 @@ class ToolController extends Controller
             'description' => $validated['description'] ?? $tool->description,
             'how_to_use' => $validated['how_to_use'] ?? $tool->how_to_use,
             'real_examples' => $validated['real_examples'] ?? $tool->real_examples,
-            'images' => $validated['images'] ?? $tool->images,
         ]);
 
         // Sync categories
@@ -162,7 +164,9 @@ class ToolController extends Controller
             }
         }
 
-        return response()->json($tool->load(['categories', 'tags', 'recommendedForUsers']));
+        $tool->load(['categories', 'tags', 'recommendedForUsers', 'user']);
+        
+        return new ToolResource($tool);
     }
 
     /**
@@ -177,7 +181,8 @@ class ToolController extends Controller
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        $tool->delete();
+        // Force delete to permanently remove from database and avoid slug conflicts
+        $tool->forceDelete();
 
         return response()->json(['message' => 'Tool deleted successfully']);
     }

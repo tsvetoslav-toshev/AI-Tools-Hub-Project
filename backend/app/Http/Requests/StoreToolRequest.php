@@ -28,8 +28,6 @@ class StoreToolRequest extends FormRequest
             'description' => 'required|string|max:1000',
             'how_to_use' => 'nullable|string|max:2000',
             'real_examples' => 'nullable|string|max:2000',
-            'images' => 'nullable|array|max:5',
-            'images.*' => 'url',
             'categories' => 'required|array|min:1',
             'categories.*' => 'exists:categories,id',
             'tags' => 'nullable|array',

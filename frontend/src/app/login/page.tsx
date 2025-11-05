@@ -44,7 +44,8 @@ export default function LoginPage() {
       console.log('Response data:', data);
 
       if (response.ok && data.success) {
-        // Store user data in localStorage
+        // Store authentication token and user data in localStorage
+        localStorage.setItem('auth_token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
         console.log('Login successful, redirecting to dashboard');
         // Redirect to dashboard or home page

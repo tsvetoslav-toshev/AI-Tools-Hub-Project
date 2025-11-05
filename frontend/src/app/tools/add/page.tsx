@@ -34,6 +34,7 @@ export default function AddToolPage() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
+  const [editingTool, setEditingTool] = useState<any>(null);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -42,7 +43,6 @@ export default function AddToolPage() {
     description: '',
     how_to_use: '',
     real_examples: '',
-    images: [''],
     categories: [] as number[],
     tags: [] as number[],
     recommended_roles: [] as string[],
@@ -51,6 +51,29 @@ export default function AddToolPage() {
   useEffect(() => {
     fetchCategories();
     fetchTags();
+    
+    // Check if editing an existing tool
+    const editingToolStr = localStorage.getItem('editingTool');
+    if (editingToolStr) {
+      const tool = JSON.parse(editingToolStr);
+      setEditingTool(tool);
+      
+      // Pre-fill form with tool data
+      setFormData({
+        name: tool.name || '',
+        link: tool.link || '',
+        documentation_link: tool.documentation_link || '',
+        description: tool.description || '',
+        how_to_use: tool.how_to_use || '',
+        real_examples: tool.real_examples || '',
+        categories: tool.categories?.map((c: any) => c.id) || [],
+        tags: tool.tags?.map((t: any) => t.id) || [],
+        recommended_roles: tool.recommendedForUsers?.map((u: any) => u.pivot.recommended_role) || [],
+      });
+      
+      // Clear the editing data
+      localStorage.removeItem('editingTool');
+    }
   }, []);
 
   const fetchCategories = async () => {
@@ -77,46 +100,94 @@ export default function AddToolPage() {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setSuccess(false);
 
     try {
-      // For demo purposes, we'll simulate authentication
-      // In production, you'd get this from your auth system
-      const token = 'demo-token'; // Replace with actual auth token
+      // Get authentication token from localStorage
+      const token = localStorage.getItem('auth_token');
+      
+      if (!token) {
+        setError('You must be logged in to submit a tool');
+        window.location.href = '/login';
+        return;
+      }
 
-      const submitData = {
-        ...formData,
-        images: formData.images.filter(img => img.trim() !== ''),
-      };
+      // Check if data has changed (for edit mode)
+      if (editingTool) {
+        const hasChanges = 
+          formData.name !== editingTool.name ||
+          formData.link !== editingTool.link ||
+          formData.documentation_link !== (editingTool.documentation_link || '') ||
+          formData.description !== editingTool.description ||
+          formData.how_to_use !== (editingTool.how_to_use || '') ||
+          formData.real_examples !== (editingTool.real_examples || '') ||
+          JSON.stringify(formData.categories.sort()) !== JSON.stringify(editingTool.categories?.map((c: any) => c.id).sort() || []) ||
+          JSON.stringify(formData.tags.sort()) !== JSON.stringify(editingTool.tags?.map((t: any) => t.id).sort() || []) ||
+          JSON.stringify(formData.recommended_roles.sort()) !== JSON.stringify(editingTool.recommendedForUsers?.map((u: any) => u.pivot.recommended_role).sort() || []);
 
-      const response = await fetch('http://localhost:8080/api/tools', {
-        method: 'POST',
+        if (!hasChanges) {
+          setError('No changes detected. Please modify at least one field to update the tool.');
+          setLoading(false);
+          return;
+        }
+      }
+
+      const url = editingTool 
+        ? `http://localhost:8080/api/tools/${editingTool.id}`
+        : 'http://localhost:8080/api/tools';
+      
+      const method = editingTool ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method: method,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify(submitData),
+        body: JSON.stringify(formData),
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to submit tool');
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || `Failed to ${editingTool ? 'update' : 'submit'} tool`);
+        } else {
+          // If response is HTML (like a 401 redirect), show auth error
+          if (response.status === 401) {
+            throw new Error('Authentication failed. Please log in again.');
+          }
+          throw new Error(`Server error (${response.status}). Please try again.`);
+        }
       }
 
       setSuccess(true);
-      setFormData({
-        name: '',
-        link: '',
-        documentation_link: '',
-        description: '',
-        how_to_use: '',
-        real_examples: '',
-        images: [''],
-        categories: [],
-        tags: [],
-        recommended_roles: [],
-      });
+      
+      if (editingTool) {
+        // Redirect to tool detail page after update
+        setTimeout(() => {
+          window.location.href = `/tools/${editingTool.id}`;
+        }, 1500);
+      } else {
+        setFormData({
+          name: '',
+          link: '',
+          documentation_link: '',
+          description: '',
+          how_to_use: '',
+          real_examples: '',
+          categories: [],
+          tags: [],
+          recommended_roles: [],
+        });
+        
+        // Scroll to show success message
+        setTimeout(() => {
+          window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+        }, 100);
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to submit tool');
+      setError(err instanceof Error ? err.message : `Failed to ${editingTool ? 'update' : 'submit'} tool`);
     } finally {
       setLoading(false);
     }
@@ -149,43 +220,51 @@ export default function AddToolPage() {
     }));
   };
 
-  const addImageField = () => {
-    setFormData(prev => ({
-      ...prev,
-      images: [...prev.images, ''],
-    }));
-  };
-
-  const updateImage = (index: number, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      images: prev.images.map((img, i) => i === index ? value : img),
-    }));
-  };
-
-  const removeImage = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      images: prev.images.filter((_, i) => i !== index),
-    }));
-  };
-
   return (
     <div className="min-h-screen bg-white dark:bg-[#1A1A1A]">
-      <div className="max-w-4xl mx-auto px-6 py-16">
+      {/* Fixed Header */}
+      <header className="border-b border-[#F4F4F4] dark:border-[#2A2A2A] fixed top-0 left-0 right-0 bg-white dark:bg-[#1A1A1A] z-50">
+        <div className="max-w-6xl mx-auto px-8 py-6 flex justify-between items-center">
+          <div className="flex items-center gap-8">
+            <Link
+              href="/dashboard"
+              className="px-4 py-2 text-xs tracking-widest uppercase font-light text-[#A3A3A3] hover:text-[#1A1A1A] dark:hover:text-white transition-colors"
+            >
+              Dashboard
+            </Link>
+            <nav className="flex gap-4">
+              <Link
+                href="/tools"
+                className="px-4 py-2 text-xs tracking-widest uppercase font-light text-[#A3A3A3] hover:text-[#1A1A1A] dark:hover:text-white transition-colors"
+              >
+                Explore Tools
+              </Link>
+              <span className="px-4 py-2 text-xs tracking-widest uppercase font-light text-[#1A1A1A] dark:text-white">
+                Submit Tool
+              </span>
+            </nav>
+          </div>
+          <button
+            onClick={() => {
+              localStorage.removeItem('auth_token');
+              localStorage.removeItem('user');
+              window.location.href = '/login';
+            }}
+            className="px-6 py-2 border border-[#1A1A1A] dark:border-white text-[#1A1A1A] dark:text-white hover:bg-[#F4F4F4] dark:hover:bg-[#2A2A2A] transition-all duration-300 text-xs tracking-widest uppercase font-light"
+          >
+            Sign Out
+          </button>
+        </div>
+      </header>
+
+      <div className="max-w-4xl mx-auto px-6 py-16 pt-32">
         {/* Header */}
         <div className="mb-12">
-          <Link
-            href="/dashboard"
-            className="text-sm text-[#A3A3A3] hover:text-[#1A1A1A] dark:hover:text-white transition-colors mb-4 inline-block"
-          >
-            ← Back to Dashboard
-          </Link>
           <h1 className="text-4xl font-light text-[#1A1A1A] dark:text-white mb-2">
-            Submit a Tool
+            {editingTool ? 'Edit Tool' : 'Submit a Tool'}
           </h1>
           <p className="text-[#A3A3A3]">
-            Share an AI tool that shapes our future
+            {editingTool ? 'Update the tool information below' : 'Share an AI tool that shapes our future'}
           </p>
         </div>
 
@@ -193,7 +272,7 @@ export default function AddToolPage() {
         {success && (
           <div className="mb-8 p-4 border border-[#F4F4F4] dark:border-[#333] bg-[#F4F4F4] dark:bg-[#2A2A2A] rounded">
             <p className="text-[#1A1A1A] dark:text-white">
-              ✓ Tool submitted successfully! It will appear after admin approval.
+              ✓ {editingTool ? 'Tool updated successfully! Redirecting...' : 'Tool submitted successfully! It will appear after admin approval.'}
             </p>
           </div>
         )}
@@ -314,44 +393,6 @@ export default function AddToolPage() {
             </div>
           </div>
 
-          {/* Images */}
-          <div className="space-y-6">
-            <h2 className="text-2xl font-light text-[#1A1A1A] dark:text-white border-b border-[#F4F4F4] dark:border-[#333] pb-2">
-              Images
-            </h2>
-
-            {formData.images.map((image, index) => (
-              <div key={index} className="flex gap-2">
-                <input
-                  type="url"
-                  value={image}
-                  onChange={(e) => updateImage(index, e.target.value)}
-                  className="flex-1 px-4 py-3 bg-white dark:bg-[#2A2A2A] border border-[#F4F4F4] dark:border-[#333] text-[#1A1A1A] dark:text-white placeholder:text-[#A3A3A3] focus:outline-none focus:border-[#A3A3A3]"
-                  placeholder={`Image URL ${index + 1}`}
-                />
-                {formData.images.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => removeImage(index)}
-                    className="px-4 py-3 border border-[#F4F4F4] dark:border-[#333] text-[#A3A3A3] hover:text-[#1A1A1A] dark:hover:text-white hover:border-[#A3A3A3] transition-colors"
-                  >
-                    Remove
-                  </button>
-                )}
-              </div>
-            ))}
-
-            {formData.images.length < 5 && (
-              <button
-                type="button"
-                onClick={addImageField}
-                className="text-sm text-[#A3A3A3] hover:text-[#1A1A1A] dark:hover:text-white transition-colors"
-              >
-                + Add Another Image (max 5)
-              </button>
-            )}
-          </div>
-
           {/* Categories */}
           <div className="space-y-6">
             <h2 className="text-2xl font-light text-[#1A1A1A] dark:text-white border-b border-[#F4F4F4] dark:border-[#333] pb-2">
@@ -426,20 +467,58 @@ export default function AddToolPage() {
           </div>
 
           {/* Submit Button */}
-          <div className="flex gap-4 pt-6">
-            <button
-              type="submit"
-              disabled={loading || formData.categories.length === 0}
-              className="px-8 py-3 bg-[#1A1A1A] dark:bg-white text-white dark:text-[#1A1A1A] hover:bg-[#333] dark:hover:bg-[#F4F4F4] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? 'Submitting...' : 'Submit Tool'}
-            </button>
-            <Link
-              href="/tools"
-              className="px-8 py-3 border border-[#F4F4F4] dark:border-[#333] text-[#1A1A1A] dark:text-white hover:border-[#A3A3A3] transition-colors"
-            >
-              Cancel
-            </Link>
+          <div className="space-y-4 pt-6">
+            <div className="flex gap-4">
+              <button
+                type="submit"
+                disabled={loading || formData.categories.length === 0}
+                className="px-8 py-3 bg-[#1A1A1A] dark:bg-white text-white dark:text-[#1A1A1A] hover:bg-[#333] dark:hover:bg-[#F4F4F4] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? (editingTool ? 'Updating...' : 'Submitting...') : (editingTool ? 'Update Tool' : 'Submit Tool')}
+              </button>
+              <Link
+                href="/tools"
+                className="px-8 py-3 border border-[#F4F4F4] dark:border-[#333] text-[#1A1A1A] dark:text-white hover:border-[#A3A3A3] transition-colors"
+              >
+                Cancel
+              </Link>
+            </div>
+
+            {/* Loading Indicator */}
+            {loading && (
+              <div className="flex items-center gap-3 text-[#A3A3A3] text-sm">
+                <div className="w-4 h-4 border-2 border-[#A3A3A3] border-t-transparent rounded-full animate-spin"></div>
+                <span>Submitting your tool...</span>
+              </div>
+            )}
+
+            {/* Success Message */}
+            {success && (
+              <div className="border border-green-500 bg-green-50 dark:bg-green-900/20 p-4 space-y-2">
+                <div className="flex items-center gap-2 text-green-700 dark:text-green-400 font-light">
+                  <span className="text-xl">✓</span>
+                  <span className="text-sm tracking-wide uppercase">Success!</span>
+                </div>
+                <p className="text-sm text-green-600 dark:text-green-500">
+                  Your tool has been published and is now visible in Explore Tools.
+                </p>
+                <Link
+                  href="/tools"
+                  className="inline-block text-sm text-green-700 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300 underline"
+                >
+                  View all tools →
+                </Link>
+              </div>
+            )}
+
+            {/* Error Message */}
+            {error && (
+              <div className="border border-red-500 bg-red-50 dark:bg-red-900/20 p-4">
+                <p className="text-sm text-red-600 dark:text-red-400">
+                  {error}
+                </p>
+              </div>
+            )}
           </div>
         </form>
       </div>

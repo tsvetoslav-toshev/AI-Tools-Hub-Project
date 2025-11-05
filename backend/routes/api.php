@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\Route;
 
 // Auth routes
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
+Route::get('/me', [AuthController::class, 'me'])->middleware('auth:sanctum');
 Route::get('/users', [AuthController::class, 'getUsers']);
 
 // Status check

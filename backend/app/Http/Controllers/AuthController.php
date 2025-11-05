@@ -31,14 +31,47 @@ class AuthController extends Controller
             ], 401);
         }
 
+        // Create Sanctum token
+        $token = $user->createToken('auth_token')->plainTextToken;
+
         return response()->json([
             'success' => true,
             'message' => 'Login successful',
+            'token' => $token,
             'user' => [
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
                 'role' => $user->role,
+            ],
+        ]);
+    }
+
+    /**
+     * Logout user (revoke token)
+     */
+    public function logout(Request $request)
+    {
+        $request->user()->currentAccessToken()->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Logged out successfully',
+        ]);
+    }
+
+    /**
+     * Get current authenticated user
+     */
+    public function me(Request $request)
+    {
+        return response()->json([
+            'success' => true,
+            'user' => [
+                'id' => $request->user()->id,
+                'name' => $request->user()->name,
+                'email' => $request->user()->email,
+                'role' => $request->user()->role,
             ],
         ]);
     }

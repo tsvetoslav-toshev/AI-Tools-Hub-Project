@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 
 interface Tool {
   id: number;
@@ -13,7 +13,6 @@ interface Tool {
   description: string;
   how_to_use: string | null;
   real_examples: string | null;
-  images: string[];
   views_count: number;
   is_featured: boolean;
   created_at: string;
@@ -29,13 +28,21 @@ interface Tool {
 
 export default function ToolDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const [tool, setTool] = useState<Tool | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
   useEffect(() => {
     if (params.id) {
       fetchTool(params.id as string);
+    }
+    // Load current user
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      setCurrentUser(JSON.parse(userStr));
     }
   }, [params.id]);
 
@@ -46,8 +53,8 @@ export default function ToolDetailPage() {
       if (!response.ok) {
         throw new Error('Tool not found');
       }
-      const data = await response.json();
-      setTool(data);
+      const response_data = await response.json();
+      setTool(response_data.data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load tool');
     } finally {
@@ -79,31 +86,119 @@ export default function ToolDetailPage() {
     );
   }
 
-  const recommendedRoles = tool.recommendedForUsers
+  const recommendedRoles = (tool.recommendedForUsers || [])
     .map((u) => u.pivot.recommended_role)
     .filter((role, index, self) => self.indexOf(role) === index);
 
+  const canEditOrDelete = currentUser && (currentUser.id === tool.user.id || currentUser.role === 'admin');
+
+  const handleDelete = async () => {
+    const token = localStorage.getItem('auth_token');
+    if (!token) {
+      alert('You must be logged in to delete tools');
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:8080/api/tools/${tool.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete tool');
+      }
+
+      // Redirect to tools page
+      router.push('/tools');
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to delete tool');
+    }
+  };
+
+  const handleEdit = () => {
+    // Store tool data in localStorage for the edit form to use
+    localStorage.setItem('editingTool', JSON.stringify(tool));
+    router.push('/tools/add');
+  };
+
   return (
     <div className="min-h-screen bg-white dark:bg-[#1A1A1A]">
-      <div className="max-w-5xl mx-auto px-6 py-16">
-        {/* Breadcrumb */}
-        <div className="mb-8">
-          <Link
-            href="/dashboard"
-            className="text-sm text-[#A3A3A3] hover:text-[#1A1A1A] dark:hover:text-white transition-colors"
+      {/* Fixed Header */}
+      <header className="border-b border-[#F4F4F4] dark:border-[#2A2A2A] fixed top-0 left-0 right-0 bg-white dark:bg-[#1A1A1A] z-50">
+        <div className="max-w-6xl mx-auto px-8 py-6 flex justify-between items-center">
+          <div className="flex items-center gap-8">
+            <Link
+              href="/dashboard"
+              className="px-4 py-2 text-xs tracking-widest uppercase font-light text-[#A3A3A3] hover:text-[#1A1A1A] dark:hover:text-white transition-colors"
+            >
+              Dashboard
+            </Link>
+            <nav className="flex gap-4">
+              <span className="px-4 py-2 text-xs tracking-widest uppercase font-light text-[#1A1A1A] dark:text-white">
+                Explore Tools
+              </span>
+              <Link
+                href="/tools/add"
+                className="px-4 py-2 text-xs tracking-widest uppercase font-light text-[#A3A3A3] hover:text-[#1A1A1A] dark:hover:text-white transition-colors"
+              >
+                Submit Tool
+              </Link>
+            </nav>
+          </div>
+          <button
+            onClick={() => {
+              localStorage.removeItem('auth_token');
+              localStorage.removeItem('user');
+              window.location.href = '/login';
+            }}
+            className="px-6 py-2 border border-[#1A1A1A] dark:border-white text-[#1A1A1A] dark:text-white hover:bg-[#F4F4F4] dark:hover:bg-[#2A2A2A] transition-all duration-300 text-xs tracking-widest uppercase font-light"
           >
-            ← Back to Dashboard
-          </Link>
+            Sign Out
+          </button>
         </div>
+      </header>
+
+      <div className="max-w-5xl mx-auto px-6 py-16 pt-32">
+
+        {/* Back Button */}
+        <Link 
+          href="/tools"
+          className="inline-flex items-center gap-2 text-sm text-[#A3A3A3] hover:text-[#1A1A1A] dark:hover:text-white transition-colors mb-8"
+        >
+          ← Back
+        </Link>
 
         {/* Header */}
         <div className="mb-12">
           {tool.is_featured && (
             <div className="text-sm text-[#A3A3A3] mb-2">⭐ Featured Tool</div>
           )}
-          <h1 className="text-5xl font-light text-[#1A1A1A] dark:text-white mb-4">
-            {tool.name}
-          </h1>
+          <div className="flex items-center justify-between mb-4">
+            <h1 className="text-5xl font-light text-[#1A1A1A] dark:text-white">
+              {tool.name}
+            </h1>
+            
+            {/* Edit and Delete buttons - only shown to owner or admin */}
+            {canEditOrDelete && (
+              <div className="flex gap-3">
+                <button
+                  onClick={handleEdit}
+                  className="px-4 py-2 text-sm border border-[#1A1A1A] dark:border-white text-[#1A1A1A] dark:text-white hover:bg-[#F4F4F4] dark:hover:bg-[#2A2A2A] transition-all duration-300"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => setShowDeleteDialog(true)}
+                  className="px-4 py-2 text-sm border border-red-500 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all duration-300"
+                >
+                  Delete
+                </button>
+              </div>
+            )}
+          </div>
           <p className="text-xl text-[#A3A3A3] mb-6">{tool.description}</p>
 
           {/* Meta Info */}
@@ -143,29 +238,6 @@ export default function ToolDetailPage() {
             )}
           </div>
         </div>
-
-        {/* Images Gallery */}
-        {tool.images && tool.images.length > 0 && (
-          <div className="mb-12">
-            <h2 className="text-2xl font-light text-[#1A1A1A] dark:text-white mb-6">
-              Screenshots
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {tool.images.map((image, index) => (
-                <div
-                  key={index}
-                  className="aspect-video border border-[#F4F4F4] dark:border-[#333] overflow-hidden"
-                >
-                  <img
-                    src={image}
-                    alt={`${tool.name} screenshot ${index + 1}`}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* Categories and Tags */}
         <div className="mb-12">
@@ -272,6 +344,37 @@ export default function ToolDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      {showDeleteDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-[#1A1A1A] p-8 rounded-lg max-w-md mx-4 border border-[#F4F4F4] dark:border-[#2A2A2A]">
+            <h3 className="text-2xl font-light text-[#1A1A1A] dark:text-white mb-4">
+              Delete Tool
+            </h3>
+            <p className="text-[#A3A3A3] mb-6">
+              Are you sure you want to delete "{tool.name}"? This action cannot be undone.
+            </p>
+            <div className="flex gap-4 justify-end">
+              <button
+                onClick={() => setShowDeleteDialog(false)}
+                className="px-6 py-2 border border-[#1A1A1A] dark:border-white text-[#1A1A1A] dark:text-white hover:bg-[#F4F4F4] dark:hover:bg-[#2A2A2A] transition-all duration-300"
+              >
+                No
+              </button>
+              <button
+                onClick={() => {
+                  setShowDeleteDialog(false);
+                  handleDelete();
+                }}
+                className="px-6 py-2 bg-red-500 text-white hover:bg-red-600 transition-all duration-300"
+              >
+                Yes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

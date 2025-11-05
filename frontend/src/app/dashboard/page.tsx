@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 interface User {
   id: number;
@@ -27,7 +28,25 @@ export default function DashboardPage() {
     setLoading(false);
   }, [router]);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    const token = localStorage.getItem('auth_token');
+    
+    if (token) {
+      try {
+        // Call logout endpoint to revoke token
+        await fetch('http://localhost:8080/api/logout', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+      } catch (error) {
+        console.error('Logout error:', error);
+      }
+    }
+    
+    // Clear local storage
+    localStorage.removeItem('auth_token');
     localStorage.removeItem('user');
     router.push('/login');
   };
@@ -50,25 +69,25 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-white dark:bg-[#1A1A1A]">
       {/* Minimalist Header */}
-      <header className="border-b border-[#F4F4F4] dark:border-[#2A2A2A]">
+      <header className="border-b border-[#F4F4F4] dark:border-[#2A2A2A] fixed top-0 left-0 right-0 bg-white dark:bg-[#1A1A1A] z-50">
         <div className="max-w-6xl mx-auto px-8 py-6 flex justify-between items-center">
           <div className="flex items-center gap-8">
-            <h1 className="text-xl font-light tracking-wide text-[#1A1A1A] dark:text-white">
+            <span className="px-4 py-2 text-xs tracking-widest uppercase font-light text-[#1A1A1A] dark:text-white">
               Dashboard
-            </h1>
+            </span>
             <nav className="flex gap-4">
-              <button
-                onClick={() => router.push('/tools')}
+              <Link
+                href="/tools"
                 className="px-4 py-2 text-xs tracking-widest uppercase font-light text-[#A3A3A3] hover:text-[#1A1A1A] dark:hover:text-white transition-colors"
               >
                 Explore Tools
-              </button>
-              <button
-                onClick={() => router.push('/tools/add')}
+              </Link>
+              <Link
+                href="/tools/add"
                 className="px-4 py-2 text-xs tracking-widest uppercase font-light text-[#A3A3A3] hover:text-[#1A1A1A] dark:hover:text-white transition-colors"
               >
                 Submit Tool
-              </button>
+              </Link>
             </nav>
           </div>
           <button
@@ -80,7 +99,7 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-8 py-24">
+      <main className="max-w-6xl mx-auto px-8 py-24 pt-32">
         {/* Hero Section */}
         <div className="text-center mb-24">
           <h2 className="text-5xl font-light tracking-tight text-[#1A1A1A] dark:text-white mb-4">

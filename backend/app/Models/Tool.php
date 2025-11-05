@@ -20,7 +20,6 @@ class Tool extends Model
         'description',
         'how_to_use',
         'real_examples',
-        'images',
         'user_id',
         'is_approved',
         'is_featured',
@@ -28,11 +27,21 @@ class Tool extends Model
     ];
 
     protected $casts = [
-        'images' => 'array',
         'is_approved' => 'boolean',
         'is_featured' => 'boolean',
         'views_count' => 'integer',
     ];
+
+    // Use camelCase for relationship serialization
+    protected $appends = [];
+    
+    // Override relationship key name for JSON serialization
+    public function getRecommendedForUsersAttribute()
+    {
+        return $this->relationLoaded('recommendedForUsers') 
+            ? $this->getRelation('recommendedForUsers') 
+            : [];
+    }
 
     protected static function boot()
     {
