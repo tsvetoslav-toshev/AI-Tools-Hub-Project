@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import Navbar from '@/components/Navbar';
 
 interface User {
   id: number;
@@ -67,37 +67,14 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#1A1A1A]">
-      {/* Minimalist Header */}
-      <header className="border-b border-[#F4F4F4] dark:border-[#2A2A2A] fixed top-0 left-0 right-0 bg-white dark:bg-[#1A1A1A] z-50">
-        <div className="max-w-6xl mx-auto px-8 py-6 flex justify-between items-center">
-          <div className="flex items-center gap-8">
-            <span className="px-4 py-2 text-xs tracking-widest uppercase font-light text-[#1A1A1A] dark:text-white">
-              Dashboard
-            </span>
-            <nav className="flex gap-4">
-              <Link
-                href="/tools"
-                className="px-4 py-2 text-xs tracking-widest uppercase font-light text-[#A3A3A3] hover:text-[#1A1A1A] dark:hover:text-white transition-colors"
-              >
-                Explore Tools
-              </Link>
-              <Link
-                href="/tools/add"
-                className="px-4 py-2 text-xs tracking-widest uppercase font-light text-[#A3A3A3] hover:text-[#1A1A1A] dark:hover:text-white transition-colors"
-              >
-                Submit Tool
-              </Link>
-            </nav>
-          </div>
-          <button
-            onClick={handleLogout}
-            className="px-6 py-2 border border-[#1A1A1A] dark:border-white text-[#1A1A1A] dark:text-white hover:bg-[#F4F4F4] dark:hover:bg-[#2A2A2A] transition-all duration-300 text-xs tracking-widest uppercase font-light"
-          >
-            Sign Out
-          </button>
-        </div>
-      </header>
+    <div 
+      className="min-h-screen"
+      style={{
+        background: 'linear-gradient(to top left, #3A3A3A, #1A1A1A)'
+      }}
+    >
+      {/* Unified Navbar */}
+      <Navbar currentPage="dashboard" />
 
       <main className="max-w-6xl mx-auto px-8 py-24 pt-32">
         {/* Hero Section */}

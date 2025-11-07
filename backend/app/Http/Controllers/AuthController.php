@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Services\AuditService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
@@ -34,6 +35,9 @@ class AuthController extends Controller
         // Create Sanctum token
         $token = $user->createToken('auth_token')->plainTextToken;
 
+        // Log successful login
+        AuditService::logLogin($user, $request);
+
         return response()->json([
             'success' => true,
             'message' => 'Login successful',
@@ -52,6 +56,9 @@ class AuthController extends Controller
      */
     public function logout(Request $request)
     {
+        // Log logout before revoking token
+        AuditService::logLogout($request->user(), $request);
+        
         $request->user()->currentAccessToken()->delete();
 
         return response()->json([

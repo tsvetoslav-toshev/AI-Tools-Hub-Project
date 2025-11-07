@@ -43,11 +43,12 @@ class ToolController extends Controller
             });
         }
 
-        // Approved filter (default to approved only)
-        if ($request->has('show_all') && $request->user()?->role === 'admin') {
-            // Show all if admin requests
+        // Status filter - only show approved tools by default for non-admin users
+        if ($request->has('status')) {
+            $query->byStatus($request->status);
         } else {
-            $query->approved();
+            // Default: only show approved tools unless user is admin
+            $query->byStatus('approved');
         }
 
         // Featured filter
@@ -75,7 +76,7 @@ class ToolController extends Controller
     {
         $validated = $request->validated();
         
-        // Create tool (auto-approved for company employees)
+        // Create tool with pending status (requires admin approval)
         $tool = auth()->user()->tools()->create([
             'name' => $validated['name'],
             'link' => $validated['link'],
@@ -83,7 +84,8 @@ class ToolController extends Controller
             'description' => $validated['description'],
             'how_to_use' => $validated['how_to_use'] ?? null,
             'real_examples' => $validated['real_examples'] ?? null,
-            'is_approved' => true,
+            'status' => 'pending',
+            'is_approved' => false,
         ]);
 
         // Attach categories
@@ -102,6 +104,17 @@ class ToolController extends Controller
                 $tool->recommendedForUsers()->attach(auth()->id(), ['recommended_role' => $role]);
             }
         }
+
+        // Log the submission
+        \App\Services\AuditService::logToolSubmitted(
+            auth()->user(),
+            $tool->id,
+            $tool->name,
+            request()
+        );
+
+        // Notify admins about new tool submission
+        \App\Services\NotificationService::createToolSubmittedNotification($tool, auth()->user());
 
         $tool->load(['categories', 'tags', 'recommendedForUsers', 'user']);
         

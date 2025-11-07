@@ -3,6 +3,10 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use App\Models\Tool;
+use App\Models\Category;
+use App\Observers\ToolObserver;
+use App\Observers\CategoryObserver;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -19,6 +23,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Register observers for cache invalidation
+        Tool::observe(ToolObserver::class);
+        Category::observe(CategoryObserver::class);
     }
 }

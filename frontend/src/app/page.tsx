@@ -2,7 +2,12 @@ import Link from "next/link";
 
 export default function Home() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-white dark:bg-[#1A1A1A]">
+    <div 
+      className="min-h-screen flex items-center justify-center"
+      style={{
+        background: 'linear-gradient(to top left, #3A3A3A, #1A1A1A)'
+      }}
+    >
       <main className="max-w-2xl mx-auto px-8 py-24 text-center">
         {/* Typography Hero */}
         <h1 className="text-6xl font-light tracking-tight text-[#1A1A1A] dark:text-white mb-8 leading-tight">

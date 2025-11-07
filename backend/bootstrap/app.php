@@ -15,7 +15,20 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->validateCsrfTokens(except: [
             'api/*',
         ]);
+        
+        // Register middleware aliases
+        $middleware->alias([
+            '2fa' => \App\Http\Middleware\EnsureTwoFactorVerified::class,
+            'role' => \App\Http\Middleware\EnsureUserHasRole::class,
+            'admin_or_moderator' => \App\Http\Middleware\EnsureAdminOrModerator::class,
+        ]);
+        
+        // API authentication should return JSON instead of redirecting
+        $middleware->redirectGuestsTo(fn () => null);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        // Return JSON responses for API routes
+        $exceptions->shouldRenderJsonWhen(function ($request) {
+            return $request->is('api/*') || $request->expectsJson();
+        });
     })->create();

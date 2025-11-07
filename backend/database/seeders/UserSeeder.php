@@ -16,11 +16,20 @@ class UserSeeder extends Seeder
     {
         $users = [
             [
-                'name' => 'Иван Иванов',
-                'email' => 'ivan@admin.local',
+                'name' => 'Alexandra Ivanova',
+                'email' => 'alexandra@admin.local',
                 'role' => 'owner',
                 'password' => Hash::make('password'),
                 'email_verified_at' => now(),
+                'roles' => ['admin'], // Full access to everything
+            ],
+            [
+                'name' => 'Иван Иванов',
+                'email' => 'ivan@moderator.local',
+                'role' => 'moderator',
+                'password' => Hash::make('password'),
+                'email_verified_at' => now(),
+                'roles' => ['moderator'], // Can manage tools, no user management
             ],
             [
                 'name' => 'Елена Петрова',
@@ -28,6 +37,7 @@ class UserSeeder extends Seeder
                 'role' => 'frontend',
                 'password' => Hash::make('password'),
                 'email_verified_at' => now(),
+                'roles' => ['user'], // Basic user access
             ],
             [
                 'name' => 'Петър Георгиев',
@@ -35,14 +45,25 @@ class UserSeeder extends Seeder
                 'role' => 'backend',
                 'password' => Hash::make('password'),
                 'email_verified_at' => now(),
+                'roles' => ['user'], // Basic user access
             ],
         ];
 
         foreach ($users as $userData) {
-            User::updateOrCreate(
+            $roles = $userData['roles'] ?? [];
+            unset($userData['roles']);
+            
+            $user = User::updateOrCreate(
                 ['email' => $userData['email']],
                 $userData
             );
+
+            // Assign RBAC roles
+            foreach ($roles as $roleName) {
+                if (!$user->hasRole($roleName)) {
+                    $user->assignRole($roleName);
+                }
+            }
         }
 
         $this->command->info('Successfully seeded ' . count($users) . ' users with roles!');

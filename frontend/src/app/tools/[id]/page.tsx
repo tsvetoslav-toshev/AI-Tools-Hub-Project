@@ -3,6 +3,9 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
+import Navbar from '@/components/Navbar';
+import RatingStars from '@/components/RatingStars';
+import CommentSection from '@/components/CommentSection';
 
 interface Tool {
   id: number;
@@ -16,6 +19,8 @@ interface Tool {
   views_count: number;
   is_featured: boolean;
   created_at: string;
+  average_rating: number;
+  ratings_count: number;
   categories: Array<{ id: number; name: string; icon: string }>;
   tags: Array<{ id: number; name: string; color: string }>;
   user: { id: number; name: string; email: string };
@@ -34,17 +39,80 @@ export default function ToolDetailPage() {
   const [error, setError] = useState('');
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [userRating, setUserRating] = useState<number>(0);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     if (params.id) {
       fetchTool(params.id as string);
+      fetchUserRating();
     }
     // Load current user
     const userStr = localStorage.getItem('user');
     if (userStr) {
-      setCurrentUser(JSON.parse(userStr));
+      const user = JSON.parse(userStr);
+      setCurrentUser(user);
+      setIsAdmin(user.role === 'admin');
     }
   }, [params.id]);
+
+  const fetchUserRating = async () => {
+    const token = localStorage.getItem('auth_token');
+    if (!token || !params.id) return;
+
+    try {
+      const response = await fetch(`http://localhost:8080/api/tools/${params.id}/ratings/user`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setUserRating(data.rating?.rating || 0);
+      }
+    } catch (error) {
+      console.error('Failed to fetch user rating:', error);
+    }
+  };
+
+  const handleRatingChange = async (rating: number) => {
+    const token = localStorage.getItem('auth_token');
+    if (!token) {
+      alert('Please login to rate');
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:8080/api/tools/${tool?.id}/ratings`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ rating }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setUserRating(rating);
+        // Update tool with new average
+        if (tool && data.tool) {
+          setTool({
+            ...tool,
+            average_rating: data.tool.average_rating,
+            ratings_count: data.tool.ratings_count,
+          });
+        }
+      } else {
+        const data = await response.json();
+        alert(data.message || 'Failed to submit rating');
+      }
+    } catch (error) {
+      console.error('Failed to submit rating:', error);
+      alert('Failed to submit rating');
+    }
+  };
 
   const fetchTool = async (id: string) => {
     setLoading(true);
@@ -125,41 +193,14 @@ export default function ToolDetailPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#1A1A1A]">
-      {/* Fixed Header */}
-      <header className="border-b border-[#F4F4F4] dark:border-[#2A2A2A] fixed top-0 left-0 right-0 bg-white dark:bg-[#1A1A1A] z-50">
-        <div className="max-w-6xl mx-auto px-8 py-6 flex justify-between items-center">
-          <div className="flex items-center gap-8">
-            <Link
-              href="/dashboard"
-              className="px-4 py-2 text-xs tracking-widest uppercase font-light text-[#A3A3A3] hover:text-[#1A1A1A] dark:hover:text-white transition-colors"
-            >
-              Dashboard
-            </Link>
-            <nav className="flex gap-4">
-              <span className="px-4 py-2 text-xs tracking-widest uppercase font-light text-[#1A1A1A] dark:text-white">
-                Explore Tools
-              </span>
-              <Link
-                href="/tools/add"
-                className="px-4 py-2 text-xs tracking-widest uppercase font-light text-[#A3A3A3] hover:text-[#1A1A1A] dark:hover:text-white transition-colors"
-              >
-                Submit Tool
-              </Link>
-            </nav>
-          </div>
-          <button
-            onClick={() => {
-              localStorage.removeItem('auth_token');
-              localStorage.removeItem('user');
-              window.location.href = '/login';
-            }}
-            className="px-6 py-2 border border-[#1A1A1A] dark:border-white text-[#1A1A1A] dark:text-white hover:bg-[#F4F4F4] dark:hover:bg-[#2A2A2A] transition-all duration-300 text-xs tracking-widest uppercase font-light"
-          >
-            Sign Out
-          </button>
-        </div>
-      </header>
+    <div 
+      className="min-h-screen"
+      style={{
+        background: 'linear-gradient(to top left, #3A3A3A, #1A1A1A)'
+      }}
+    >
+      {/* Unified Navbar */}
+      <Navbar currentPage="explore-tools" />
 
       <div className="max-w-5xl mx-auto px-6 py-16 pt-32">
 
@@ -328,6 +369,60 @@ export default function ToolDetailPage() {
             </div>
           </div>
         )}
+
+        {/* Rating Section */}
+        <div className="mb-12 pb-12 border-b border-[#F4F4F4] dark:border-[#2A2A2A]">
+          <h2 className="text-2xl font-light text-[#1A1A1A] dark:text-white mb-6">
+            Rating
+          </h2>
+          
+          {/* Average Rating Display */}
+          <div className="mb-6">
+            <RatingStars
+              rating={tool.average_rating || 0}
+              totalRatings={tool.ratings_count || 0}
+              size="lg"
+            />
+          </div>
+
+          {/* User Rating - Interactive */}
+          {currentUser && currentUser.id !== tool.user.id && (
+            <div>
+              <p className="text-sm text-[#A3A3A3] mb-3 uppercase tracking-widest">
+                Your Rating:
+              </p>
+              <RatingStars
+                rating={userRating}
+                interactive
+                size="lg"
+                onChange={handleRatingChange}
+              />
+            </div>
+          )}
+
+          {currentUser && currentUser.id === tool.user.id && (
+            <p className="text-sm text-[#A3A3A3] italic">
+              You cannot rate your own tool
+            </p>
+          )}
+
+          {!currentUser && (
+            <p className="text-sm text-[#A3A3A3]">
+              Please{' '}
+              <Link href="/login" className="underline hover:text-[#1A1A1A] dark:hover:text-white">
+                login
+              </Link>
+              {' '}to rate this tool
+            </p>
+          )}
+        </div>
+
+        {/* Comments Section */}
+        <CommentSection
+          toolId={tool.id}
+          currentUserId={currentUser?.id}
+          isAdmin={isAdmin}
+        />
 
         {/* Footer CTA */}
         <div className="pt-12 border-t border-[#F4F4F4] dark:border-[#333]">

@@ -16,9 +16,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8201';
-      console.log('Attempting login to:', `${apiUrl}/api/login`);
-      console.log('Credentials:', { email, password: '***' });
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
       
       const response = await fetch(`${apiUrl}/api/login`, {
         method: 'POST',
@@ -28,43 +26,73 @@ export default function LoginPage() {
         body: JSON.stringify({ email, password }),
       });
 
-      console.log('Response status:', response.status);
-      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
-
-      // Check if response is JSON
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        const textResponse = await response.text();
-        console.error('Non-JSON response:', textResponse);
-        setError(`Server error: Expected JSON but got ${contentType}. Check console for details.`);
+      // Always try to parse JSON response
+      let data;
+      try {
+        data = await response.json();
+      } catch (parseError) {
+        console.error('Failed to parse JSON:', parseError);
+        setError('Server returned invalid response.');
         return;
       }
-
-      const data = await response.json();
-      console.log('Response data:', data);
 
       if (response.ok && data.success) {
         // Store authentication token and user data in localStorage
         localStorage.setItem('auth_token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
-        console.log('Login successful, redirecting to dashboard');
-        // Redirect to dashboard or home page
-        router.push('/dashboard');
+        
+        // Check if user needs 2FA verification
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+        const statusResponse = await fetch(`${apiUrl}/api/2fa/status`, {
+          headers: {
+            'Authorization': `Bearer ${data.token}`,
+          },
+          credentials: 'include', // Important: Send/receive cookies
+        });
+
+        if (statusResponse.ok) {
+          const statusData = await statusResponse.json();
+          
+          if (statusData.verified || statusData.trusted_device) {
+            // Already verified or trusted device - go to dashboard
+            localStorage.setItem('2fa_verified', 'true');
+            router.push('/dashboard');
+            return; // IMPORTANT: Exit after routing to prevent fall-through
+          } else {
+            // Need 2FA verification - send code and redirect to 2FA page
+            await fetch(`${apiUrl}/api/2fa/send`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${data.token}`,
+              },
+              credentials: 'include', // Important: Send/receive cookies
+            });
+            router.push('/2fa');
+            return; // IMPORTANT: Exit after routing to prevent fall-through
+          }
+        } else {
+          // If 2FA check fails, just go to dashboard (backward compatibility)
+          router.push('/dashboard');
+          return; // IMPORTANT: Exit after routing to prevent fall-through
+        }
       } else {
         // Show error message from server
-        console.error('Login failed:', data);
         setError(data.message || 'Invalid credentials. Please try again.');
       }
     } catch (err) {
-      console.error('Login error:', err);
-      setError(`Failed to connect to the server: ${err instanceof Error ? err.message : 'Unknown error'}. Check console for details.`);
+      setError(`Failed to connect to the server: ${err instanceof Error ? err.message : 'Unknown error'}.`);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-white dark:bg-[#1A1A1A] px-4">
+    <div 
+      className="min-h-screen flex items-center justify-center px-4"
+      style={{
+        background: 'linear-gradient(to top left, #3A3A3A, #1A1A1A)'
+      }}
+    >
       <div className="max-w-md w-full py-16">
         {/* Header */}
         <div className="mb-16 text-center">
@@ -135,7 +163,8 @@ export default function LoginPage() {
         <div className="mt-16 pt-8 border-t border-[#F4F4F4] dark:border-[#2A2A2A]">
           <p className="text-xs uppercase tracking-widest text-[#A3A3A3] mb-6 font-light">Test Accounts</p>
           <div className="space-y-3 text-xs text-[#A3A3A3] font-light leading-relaxed">
-            <p><span className="text-[#1A1A1A] dark:text-white">Owner:</span> ivan@admin.local / password</p>
+            <p><span className="text-[#1A1A1A] dark:text-white">Admin:</span> alexandra@admin.local / password</p>
+            <p><span className="text-[#1A1A1A] dark:text-white">Moderator:</span> ivan@moderator.local / password</p>
             <p><span className="text-[#1A1A1A] dark:text-white">Frontend:</span> elena@frontend.local / password</p>
             <p><span className="text-[#1A1A1A] dark:text-white">Backend:</span> petar@backend.local / password</p>
           </div>
