@@ -21,9 +21,11 @@ class UpdateToolRequest extends FormRequest
      */
     public function rules(): array
     {
+        $toolId = $this->route('id');
+        
         return [
             'name' => 'sometimes|required|string|max:255',
-            'link' => 'sometimes|required|url|max:500',
+            'link' => 'sometimes|required|url|max:500|unique:tools,link,' . $toolId,
             'documentation_link' => 'nullable|url|max:500',
             'description' => 'sometimes|required|string|max:1000',
             'how_to_use' => 'nullable|string|max:2000',
@@ -34,6 +36,16 @@ class UpdateToolRequest extends FormRequest
             'tags.*' => 'exists:tags,id',
             'recommended_roles' => 'nullable|array',
             'recommended_roles.*' => 'string|max:255',
+        ];
+    }
+
+    /**
+     * Get custom error messages for validation.
+     */
+    public function messages(): array
+    {
+        return [
+            'link.unique' => 'A tool with this website URL already exists in our database.',
         ];
     }
 }

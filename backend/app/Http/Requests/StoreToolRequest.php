@@ -23,7 +23,7 @@ class StoreToolRequest extends FormRequest
     {
         return [
             'name' => 'required|string|max:255',
-            'link' => 'required|url|max:500',
+            'link' => 'required|url|max:500|unique:tools,link',
             'documentation_link' => 'nullable|url|max:500',
             'description' => 'required|string|max:1000',
             'how_to_use' => 'nullable|string|max:2000',
@@ -34,6 +34,16 @@ class StoreToolRequest extends FormRequest
             'tags.*' => 'exists:tags,id',
             'recommended_roles' => 'nullable|array',
             'recommended_roles.*' => 'string|max:255',
+        ];
+    }
+
+    /**
+     * Get custom error messages for validation.
+     */
+    public function messages(): array
+    {
+        return [
+            'link.unique' => 'A tool with this website URL already exists in our database.',
         ];
     }
 }

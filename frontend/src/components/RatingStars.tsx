@@ -20,6 +20,9 @@ export default function RatingStars({
   className = '',
 }: RatingStarsProps) {
   const [hoverRating, setHoverRating] = useState(0);
+  
+  // Ensure rating is a number (convert from string if needed)
+  const numericRating = typeof rating === 'string' ? parseFloat(rating) || 0 : rating;
 
   const sizeClasses = {
     sm: 'w-4 h-4',
@@ -47,7 +50,7 @@ export default function RatingStars({
     }
   };
 
-  const displayRating = hoverRating || rating;
+  const displayRating = hoverRating || numericRating;
 
   const renderStar = (index: number) => {
     const filled = index <= displayRating;
@@ -112,7 +115,7 @@ export default function RatingStars({
       </div>
       {!interactive && totalRatings !== undefined && (
         <span className="text-sm text-[#A3A3A3] ml-2">
-          {rating > 0 ? rating.toFixed(1) : '0.0'} ({totalRatings})
+          {numericRating > 0 ? numericRating.toFixed(1) : '0.0'} ({totalRatings})
         </span>
       )}
       {interactive && hoverRating > 0 && (

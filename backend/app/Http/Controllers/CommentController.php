@@ -22,7 +22,9 @@ class CommentController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        return response()->json($comments);
+        return response()->json([
+            'comments' => $comments
+        ]);
     }
 
     /**
